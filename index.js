@@ -5,6 +5,9 @@ var iconv = require('iconv-lite');
 
 var TEST_URL = 'http://sh.1010jz.com/job/index1.html';
 
+function parse( str ){
+   return  unescape( str.replace(/&#x/g,'%u').replace(/;/g,'').replace(/%uA0/g,'&nbsp;') );
+}
 /*
   http://www.1010jz.com/
   抓取公共函数
@@ -70,15 +73,19 @@ function getDetail( link ){
         contact,
         address,
         phone;
+
     var regExp_date = /(\<span\>更新时间\：)(\w{2}-\w{2}\s{1}\w{2}:\w{2})(\<\/span\>)/ig,
         regExp_region = /(\<span\>工作地点\：)(.*)(\<\/span\>)/ig,
         regExp_companyName = /(\<span\>公司名称\：)(.|\n)*(\<\/span\>)/ig,
         regExp_industry = /(\<span\>所属行业\：)(\W)*(\<\/span\>)/ig,
         regExp_companyType = /(\<span\>公司类型\：)(\W)*(\<\/span\>)/ig,
-        regExp_scale = /(\<span\>公司规模：)(\W|\d)*(\<\/span\>)/ig;
+        regExp_scale = /公司规模：.*?[人|上]/ig,
+        regExp_jobDetail = /.*(?=\<br\>\<br\>联系我时请说明在1010兼职网看到的)/ig,
+        regExp_jobDetail_after = /(\<br\>\<br\>联系我时请说明在1010兼职网看到的)(.*)/;
     crawler( link , {} , function($){
         var detailWraper = $(".d_left"); 
-            detailWraperHtml = unescape( detailWraper.html().replace(/&#x/g,'%u').replace(/;/g,'') );
+            detailWraperHtml = parse( detailWraper.html() ),
+            detailWraperHtml_content = parse( detailWraper.find(".d_content").html() );
         title = detailWraper.find('h2').text().trim();
         jobType = "";
         date = detailWraperHtml.match(regExp_date)[0].match(/(\w{2}-\w{2}\s{1}\w{2}:\w{2})/ig)[0];
@@ -86,10 +93,16 @@ function getDetail( link ){
         companyName = "";
         industry = detailWraperHtml.match(regExp_industry)[0].match(/(\<span\>)(所属行业：)(\W*?)(\<\/span\>)/i)[3];
         companyType = detailWraperHtml.match(regExp_companyType)[0].match(/(\<span\>)(公司类型：)(\W*?)(\<\/span\>)/i)[3];
-        // scale = detailWraperHtml.match(regExp_scale)[0].match(/(\<span\>)(公司规模：)(\W|\d*?)(\<\/span\>)/i)[3];
+        scale = detailWraperHtml.match(regExp_scale)[0].substring(5);
+        jobDetail = detailWraperHtml_content.match(regExp_jobDetail)[0];
+        regExp_jobDetail_after = detailWraperHtml_content.match(regExp_jobDetail_after)[2].replace(/\<\/div\>|\s|\<br\>/g,'').match(/.*(?=\<a)/)[0];
+        contact = regExp_jobDetail_after.match(/.*(?=联系地址)/ig)[0].substring(4);
+        address = regExp_jobDetail_after.match(/(.*)联系地址：(.*)/)[2];
 
-        console.log( detailWraperHtml.match(regExp_scale)[0].match(/(\<span\>)(公司规模：)(\W|\d|)*?(\<\/span\>)/i)[3] );
+        console.log(date+" "+region+" "+industry+" "+companyType+" "+scale+" "+contact+" "+address);
     })
 }
 
-getList( TEST_URL );
+for( var i = 0; i<110; i++){
+    getList( TEST_URL );
+}
