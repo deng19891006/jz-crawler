@@ -6,6 +6,8 @@
         "cheerio": "0.17.0",
         "underscore.string": "2.3.3",
         "underscore":"1.6.0",
-        "iconv-lite":"0.4.5"
+        "iconv-lite":"0.4.5",
+        "fs":"0.0.2",
+        "simply-uuid":"1.0.1"
     }
 }

@@ -2,8 +2,10 @@ var request = require('request');
 var cheerio = require('cheerio');
 var fs = require('fs');
 var iconv = require('iconv-lite');
+var UUID = require('simply-uuid');
+var underscore = require('underscore');
 
-var TEST_URL = 'http://sh.1010jz.com/job/index1.html';
+var TEST_URL = 'http://sh.1010jz.com/it/index1.html';
 
 function parse( str ){
    return  unescape( str.replace(/&#x/g,'%u').replace(/;/g,'').replace(/%uA0/g,'&nbsp;') );
@@ -13,10 +15,12 @@ function parse( str ){
   抓取公共函数
 */
 function crawler( link, params, fn ){
-    request({
+    var defaults = {
         encoding: null,
         url: link
-    }, function (error, res, body) {
+    }
+    defaults  = underscore.extend( defaults , params );
+    request(defaults, function (error, res, body) {
         if (!error && res.statusCode == 200) {
             var $ = cheerio.load(iconv.decode(body, params.encoding || "gb2312" ));
             fn && fn( $ );
@@ -61,7 +65,8 @@ function getList( link ){
     phone 联系电话
 */
 function getDetail( link ){
-    var title, 
+    var uuid,
+        title, 
         jobType,
         date,
         region,
@@ -72,7 +77,8 @@ function getDetail( link ){
         jobDetail,
         contact,
         address,
-        phone;
+        phone,
+        jobDetail_after;
 
     var regExp_date = /(\<span\>更新时间\：)(\w{2}-\w{2}\s{1}\w{2}:\w{2})(\<\/span\>)/ig,
         regExp_region = /(\<span\>工作地点\：)(.*)(\<\/span\>)/ig,
@@ -82,10 +88,15 @@ function getDetail( link ){
         regExp_scale = /公司规模：.*?[人|上]/ig,
         regExp_jobDetail = /.*(?=\<br\>\<br\>联系我时请说明在1010兼职网看到的)/ig,
         regExp_jobDetail_after = /(\<br\>\<br\>联系我时请说明在1010兼职网看到的)(.*)/;
-    crawler( link , {} , function($){
+        crawler( link , { 
+                headers: {
+                'Referer': link
+                }
+        } , function($){
         var detailWraper = $(".d_left"); 
             detailWraperHtml = parse( detailWraper.html() ),
             detailWraperHtml_content = parse( detailWraper.find(".d_content").html() );
+        uuid = UUID.generate();
         title = detailWraper.find('h2').text().trim();
         jobType = "";
         date = detailWraperHtml.match(regExp_date)[0].match(/(\w{2}-\w{2}\s{1}\w{2}:\w{2})/ig)[0];
@@ -95,14 +106,34 @@ function getDetail( link ){
         companyType = detailWraperHtml.match(regExp_companyType)[0].match(/(\<span\>)(公司类型：)(\W*?)(\<\/span\>)/i)[3];
         scale = detailWraperHtml.match(regExp_scale)[0].substring(5);
         jobDetail = detailWraperHtml_content.match(regExp_jobDetail)[0];
-        regExp_jobDetail_after = detailWraperHtml_content.match(regExp_jobDetail_after)[2].replace(/\<\/div\>|\s|\<br\>/g,'').match(/.*(?=\<a)/)[0];
-        contact = regExp_jobDetail_after.match(/.*(?=联系地址)/ig)[0].substring(4);
-        address = regExp_jobDetail_after.match(/(.*)联系地址：(.*)/)[2];
+        jobDetail_after = detailWraperHtml_content.match(regExp_jobDetail_after)[2].replace(/\<\/div\>|\s|\<br\>/g,'').match(/.*(?=\<a)/)[0];
+        contact = jobDetail_after.match(/.*(?=联系地址)/ig)[0].substring(4);
+        address = jobDetail_after.match(/(.*)联系地址：(.*)/)[2];
+        // phone = detailWraperHtml_content.match(detailWraperHtml_content.match(regExp_jobDetail_after)[2]);
 
-        console.log(date+" "+region+" "+industry+" "+companyType+" "+scale+" "+contact+" "+address);
+        console.log(phone);
     })
 }
 
-for( var i = 0; i<110; i++){
+/*
+  获取电话图片,保存到本地
+*/
+function getPhoneImg( referer , link ){
+    request({
+        encoding: null,
+        url: link,
+        headers: {
+            'Referer': referer
+        }
+    },function(error, res, body){}).pipe(fs.createWriteStream('../jz-phone/'+UUID.generate()+'.png'))
+}
+
+for( var i = 0; i<1; i++){
     getList( TEST_URL );
 }
+
+// getPhoneImg( 'http://sh.1010jz.com/it/a1957237.html' , 'http://sta.1010jz.com/code.asp?v=245688417489o45272' )
+
+// console.log(UUID.generate())
+
+// getDetail("http://sh.1010jz.com/it/a1941646.html");
