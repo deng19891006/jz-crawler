@@ -37,7 +37,7 @@ function crawler( link, params, fn ){
 function getList( link ){
     crawler( link , {} , function($){
             var joblist = $(".joblist").find("li.hover");
-            console.log("url: " +link+" ---- "+joblist.length + "条");   
+            // console.log("url: " +link+" ---- "+joblist.length + "条");   
             joblist.each(function (index, ele) {
               getDetail( $(this).find("a").attr('href') )
               /*console.log("   link：" + $(this).find("a").attr('href') );
@@ -109,26 +109,26 @@ function getDetail( link ){
         jobDetail_after = detailWraperHtml_content.match(regExp_jobDetail_after)[2].replace(/\<\/div\>|\s|\<br\>/g,'').match(/.*(?=\<a)/)[0];
         contact = jobDetail_after.match(/.*(?=联系地址)/ig)[0].substring(4);
         address = jobDetail_after.match(/(.*)联系地址：(.*)/)[2];
-        // phone = detailWraperHtml_content.match(detailWraperHtml_content.match(regExp_jobDetail_after)[2]);
-
-        console.log(phone);
+        phone =cheerio.load(detailWraperHtml_content)('img').eq(0).attr('src');
+        phone && getPhoneImg(uuid, link , phone);
     })
 }
 
 /*
   获取电话图片,保存到本地
 */
-function getPhoneImg( referer , link ){
+function getPhoneImg( uuid, referer , imgsrc ){
+    console.log(uuid+" "+imgsrc)
     request({
         encoding: null,
-        url: link,
+        url: imgsrc,
         headers: {
             'Referer': referer
         }
-    },function(error, res, body){}).pipe(fs.createWriteStream('../jz-phone/'+UUID.generate()+'.png'))
+    },function(error, res, body){}).pipe(fs.createWriteStream('../jz-phone/'+uuid+'.png'))
 }
 
-for( var i = 0; i<1; i++){
+for( var i = 0; i<100; i++){
     getList( TEST_URL );
 }
 
@@ -137,3 +137,5 @@ for( var i = 0; i<1; i++){
 // console.log(UUID.generate())
 
 // getDetail("http://sh.1010jz.com/it/a1941646.html");
+
+
