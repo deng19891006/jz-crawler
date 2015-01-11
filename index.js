@@ -52,10 +52,11 @@ function getList( link ){
   http://www.1010jz.com/
   抓取详情页
     title 职位标题
-    jobType 职位类型
+    jobType 职位类型  计算机/网络
+    jobType_value 职位类型值 it
     date 更新时间
     region 区域
-    company 公司名称
+    companyName 公司名称
     industry 公司所属行业
     companyType 公司类型
     scale 公司规模
@@ -63,11 +64,14 @@ function getList( link ){
     contact 联系人
     address 联系地址
     phone 联系电话
+    imgUUID 联系方式图片uuid,用于对应电话号码
+
 */
 function getDetail( link ){
     var uuid,
         title, 
         jobType,
+        jobType_value,
         date,
         region,
         companyName,
@@ -82,7 +86,8 @@ function getDetail( link ){
 
     var regExp_date = /(\<span\>更新时间\：)(\w{2}-\w{2}\s{1}\w{2}:\w{2})(\<\/span\>)/ig,
         regExp_region = /(\<span\>工作地点\：)(.*)(\<\/span\>)/ig,
-        regExp_companyName = /(\<span\>公司名称\：)(.|\n)*(\<\/span\>)/ig,
+        regExp_companyName = /(\<span\>公司名称\：)(\W|<a([^>]*)>(.*)<\/a>)*(\<\/span\>)/ig,
+        regExp_companyName_only = /(\<span\>公司名称\：)(\W)*(\<\/span\>)/ig,
         regExp_industry = /(\<span\>所属行业\：)(\W)*(\<\/span\>)/ig,
         regExp_companyType = /(\<span\>公司类型\：)(\W)*(\<\/span\>)/ig,
         regExp_scale = /公司规模：.*?[人|上]/ig,
@@ -93,15 +98,22 @@ function getDetail( link ){
                 'Referer': link
                 }
         } , function($){
-        var detailWraper = $(".d_left"); 
+        var detailWraper = $(".d_left"),
+            detailNav = $(".d_cname"),
             detailWraperHtml = parse( detailWraper.html() ),
             detailWraperHtml_content = parse( detailWraper.find(".d_content").html() );
         uuid = UUID.generate();
         title = detailWraper.find('h2').text().trim();
-        jobType = "";
+        jobType = detailNav.find('a').eq(1).text();
+        jobType_value = link.split('/')[3];
         date = detailWraperHtml.match(regExp_date)[0].match(/(\w{2}-\w{2}\s{1}\w{2}:\w{2})/ig)[0];
         region = cheerio.load( detailWraperHtml.match(regExp_region)[0] )('span').eq(0).find('a').text();
-        companyName = "";
+        companyName =cheerio.load( detailWraperHtml.match(regExp_companyName)[0] );
+        if( companyName('a').length > 0 ){
+            companyName = companyName('a').eq(0).text();
+        }else{
+            companyName = detailWraperHtml.match(regExp_companyName_only)[0].match(/(\<span\>)(公司名称：)(\W*?)(\<\/span\>)/i)[3];
+        }
         industry = detailWraperHtml.match(regExp_industry)[0].match(/(\<span\>)(所属行业：)(\W*?)(\<\/span\>)/i)[3];
         companyType = detailWraperHtml.match(regExp_companyType)[0].match(/(\<span\>)(公司类型：)(\W*?)(\<\/span\>)/i)[3];
         scale = detailWraperHtml.match(regExp_scale)[0].substring(5);
@@ -111,6 +123,7 @@ function getDetail( link ){
         address = jobDetail_after.match(/(.*)联系地址：(.*)/)[2];
         phone =cheerio.load(detailWraperHtml_content)('img').eq(0).attr('src');
         phone && getPhoneImg(uuid, link , phone);
+        console.log(title+" "+jobType+" "+jobType_value+" "+date+" "+region+" "+companyName+" "+industry+" "+industry+" "+contact+" "+address);
     })
 }
 
@@ -118,7 +131,7 @@ function getDetail( link ){
   获取电话图片,保存到本地
 */
 function getPhoneImg( uuid, referer , imgsrc ){
-    console.log(uuid+" "+imgsrc)
+    // console.log(uuid+" "+imgsrc)
     request({
         encoding: null,
         url: imgsrc,
@@ -128,7 +141,7 @@ function getPhoneImg( uuid, referer , imgsrc ){
     },function(error, res, body){}).pipe(fs.createWriteStream('../jz-phone/'+uuid+'.png'))
 }
 
-for( var i = 0; i<100; i++){
+for( var i = 0; i<1; i++){
     getList( TEST_URL );
 }
 
